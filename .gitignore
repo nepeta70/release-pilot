@@ -1,0 +1,66 @@
+# Build Folders
+bin/
+obj/
+out/
+
+# Visual Studio temporary files
+.vs/
+*.user
+*.suo
+*.userosscache
+*.sln.docstates
+
+# Visual Studio Code settings
+.vscode/
+
+# Rider IDE
+.idea/
+*.sln.iml
+
+# ASP.NET Core / .NET 10
+appsettings.Development.json
+appsettings.Local.json
+secrets.json
+
+# NuGet Packages
+*.nupkg
+*.snupkg
+packages/
+.nuget/
+
+# Dotnet CLI
+project.lock.json
+project.fragment.lock.json
+artifacts/
+
+# Logs
+*.log
+logs/
+
+# OS generated files
+.DS_Store
+Thumbs.db
+
+# Test results
+TestResults/
+*.trx
+
+# Coverage files
+coverage.*
+*.coverlet.*
+
+# Rider specific
+.idea/
+
+# JetBrains Rider caches
+.idea/.idea.*
+
+# User-specific files
+*.swp
+*.tmp
+*.bak
+*.orig
+
+#docker compose used in my local environment
+docker-compose.yml
+

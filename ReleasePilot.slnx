@@ -1,0 +1,10 @@
+<Solution>
+  <Folder Name="/docker/">
+    <File Path="docker/docker-compose.yaml" />
+    <File Path="Dockerfile" />
+  </Folder>
+  <Project Path="src/ReleasePilot.Api/ReleasePilot.Api.csproj" />
+  <Project Path="src/ReleasePilot.Application/ReleasePilot.Application.csproj" />
+  <Project Path="src/ReleasePilot.Domain/ReleasePilot.Domain.csproj" />
+  <Project Path="src/ReleasePilot.Infrastructure/ReleasePilot.Infrastructure.csproj" />
+</Solution>
