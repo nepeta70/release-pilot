@@ -1,4 +1,4 @@
-﻿namespace ReleasePilot.Domain.ValueObjects;
+﻿namespace ReleasePilot.Domain.Enums;
 
 public enum DeploymentEnvironment
 {
