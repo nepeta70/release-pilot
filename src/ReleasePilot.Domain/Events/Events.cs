@@ -4,7 +4,7 @@ namespace ReleasePilot.Domain.Events;
 
 public abstract record PromotionEvent(Guid PromotionId, DateTime OccurredOn, string ActingUser);
 
-public record PromotionRequested(
+public sealed record PromotionRequested(
         Guid PromotionId,
         string AppName,
         string Version,
@@ -13,17 +13,24 @@ public record PromotionRequested(
         string ActingUser)
     : PromotionEvent(PromotionId, OccurredOn, ActingUser);
 
-public record PromotionApproved(Guid PromotionId, string Approver, DateTime OccurredOn, string ActingUser)
+public sealed record PromotionApproved(Guid PromotionId, string Approver, DateTime OccurredOn, string ActingUser)
     : PromotionEvent(PromotionId, OccurredOn, ActingUser);
 
-public record DeploymentStarted(Guid PromotionId, DateTime OccurredOn, string ActingUser)
+public sealed record DeploymentStarted(Guid PromotionId, DateTime OccurredOn, string ActingUser)
     : PromotionEvent(PromotionId, OccurredOn, ActingUser);
 
-public record PromotionCompleted(Guid PromotionId, DateTime CompletedAt, string ActingUser)
-    : PromotionEvent(PromotionId, CompletedAt, ActingUser);
-
-public record PromotionRolledBack(Guid PromotionId, string Reason, DateTime OccurredOn, string ActingUser)
+public sealed record PromotionCompleted(Guid PromotionId, DateTime OccurredOn, string ActingUser)
     : PromotionEvent(PromotionId, OccurredOn, ActingUser);
 
-public record PromotionCancelled(Guid PromotionId, DateTime OccurredOn, string ActingUser)
+public sealed record PromotionRolledBack(Guid PromotionId, string Reason, DateTime OccurredOn, string ActingUser)
     : PromotionEvent(PromotionId, OccurredOn, ActingUser);
+
+public sealed record PromotionCancelled(Guid PromotionId, DateTime OccurredOn, string ActingUser)
+    : PromotionEvent(PromotionId, OccurredOn, ActingUser);
+
+public sealed record PromotionEventEnvelope(
+    Guid PromotionId,
+    string EventType,
+    DateTime OccurredOn,
+    string ActingUser,
+    string PayloadJson);
