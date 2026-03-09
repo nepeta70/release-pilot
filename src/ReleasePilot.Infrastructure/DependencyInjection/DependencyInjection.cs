@@ -1,0 +1,72 @@
+using Dapper;
+using Microsoft.Extensions.Configuration;
+using Microsoft.Extensions.DependencyInjection;
+using Npgsql;
+using ReleasePilot.Application.Adapters.External;
+using ReleasePilot.Application.Ports.External;
+using ReleasePilot.Application.Ports.Messaging;
+using ReleasePilot.Application.Ports.Repositories;
+using ReleasePilot.Domain.Enums;
+using ReleasePilot.Infrastructure.Adapters.Outbox;
+using ReleasePilot.Infrastructure.Adapters.Persistence;
+using ReleasePilot.Infrastructure.Adapters.Repositories;
+using ReleasePilot.Infrastructure.Messaging;
+using ReleasePilot.Infrastructure.Ports;
+using System.Data;
+namespace ReleasePilot.Infrastructure.DependencyInjection;
+
+public static class PostgresSetup
+{
+    public static void MapPostgresTypes()
+    {
+        // Tell Npgsql to map the DB Enum to our Domain Enum
+        var dataSourceBuilder = new NpgsqlDataSourceBuilder("DefaultConnection");
+        dataSourceBuilder.MapEnum<DeploymentEnvironment>("deployment_environment");
+        dataSourceBuilder.MapEnum<PromotionStatus>("promotion_status");
+
+        // This ensures Dapper understands the translation
+        SqlMapper.AddTypeHandler(new PromotionStatusHandler());
+        SqlMapper.AddTypeHandler(new DeploymentEnvironmentHandler());
+    }
+}
+
+public static class DependencyInjection
+{
+    public static IServiceCollection AddInfrastructure(
+        this IServiceCollection services,
+        IConfiguration configuration)
+    {
+        // 1. Database Connection (Postgres)
+        var connectionString = configuration.GetConnectionString("DefaultConnection")
+            ?? throw new InvalidOperationException("Connection string 'DefaultConnection' not found.");
+
+        // Using NpgsqlConnection for Dapper
+        services.AddScoped<IDbConnection>(_ => new NpgsqlConnection(connectionString));
+        services.AddSingleton<IDbConnectionFactory, DbConnectionFactory>();
+
+        // 2. Repositories (Separated Read/Write as requested)
+        services.AddScoped<IPromotionWriteRepository, PromotionWriteRepository>();
+        services.AddScoped<IPromotionReadRepository, PromotionReadRepository>();
+        services.AddScoped<IPromotionEventAuditRepository, PromotionEventAuditRepository>();
+
+        // 3. Kafka settings
+        services.AddKafkaInfrastructure(configuration);
+
+        // 5. Outbox (event-driven async publishing)
+        services.AddScoped<IEventOutbox, DapperEventOutbox>();
+        services.AddScoped<IOutboxRepository, OutboxRepository>();
+        services.AddScoped<IOutboxUnitOfWork, OutboxUnitOfWork>();
+        services.AddHostedService<OutboxProcessor>();
+        services.AddHostedService<PromotionEventAuditConsumer>();
+
+        // 6. External System Ports (Stubs/Adapters)
+        services.AddScoped<IDeploymentPort, StubDeploymentAdapter>();
+        services.AddScoped<IIssueTrackerPort, StubIssueTrackerAdapter>();
+        services.AddScoped<INotificationPort, StubNotificationAdapter>();
+
+        // 4. Kafka Outbox / Producers (Stub for now or real Confluent implementation)
+        // services.AddSingleton<IKafkaProducer, KafkaProducer>();
+
+        return services;
+    }
+}

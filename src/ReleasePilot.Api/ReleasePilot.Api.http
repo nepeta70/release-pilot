@@ -1,0 +1,67 @@
+@ReleasePilot.Api_HostAddress = http://localhost:5299
+@PromotionId = 550e8400-e29b-41d4-a716-446655440000
+
+# Common Headers for Middleware
+@UserName = JohnDoe
+@UserRole = Approver
+
+### 1. Request a New Promotion (PUT /)
+PUT {{ReleasePilot.Api_HostAddress}}/promotions/
+Content-Type: application/json
+X-User-Name: {{UserName}}
+X-Role: {{UserRole}}
+
+{
+  "appName": "PaymentGateway",
+  "version": "1.2.4",
+  "targetEnv": "Production",
+  "workItemIds": ["PROJ-101", "PROJ-102"]
+}
+
+###
+
+### 2. Approve a Promotion (POST /{id}/approve)
+POST {{ReleasePilot.Api_HostAddress}}/promotions/{{PromotionId}}/approve
+X-User-Name: {{UserName}}
+X-Role: {{UserRole}}
+
+###
+
+### 3. Start Deployment (POST /{id}/start-deployment)
+POST {{ReleasePilot.Api_HostAddress}}/promotions/{{PromotionId}}/start-deployment
+X-User-Name: {{UserName}}
+X-Role: {{UserRole}}
+
+###
+
+### 4. Complete Promotion (POST /{id}/complete)
+POST {{ReleasePilot.Api_HostAddress}}/promotions/{{PromotionId}}/complete
+X-User-Name: {{UserName}}
+X-Role: {{UserRole}}
+
+###
+
+### 5. Rollback Promotion (POST /{id}/rollback)
+POST {{ReleasePilot.Api_HostAddress}}/promotions/{{PromotionId}}/rollback
+Content-Type: application/json
+X-User-Name: {{UserName}}
+X-Role: {{UserRole}}
+
+{
+  "reason": "Database migration failure"
+}
+
+###
+
+### 6. Cancel Promotion (POST /{id}/cancel)
+POST {{ReleasePilot.Api_HostAddress}}/promotions/{{PromotionId}}/cancel
+X-User-Name: {{UserName}}
+X-Role: {{UserRole}}
+
+###
+
+### 7. Get Promotion Details (GET /{id})
+GET {{ReleasePilot.Api_HostAddress}}/promotions/{{PromotionId}}
+Accept: application/json
+X-User-Name: {{UserName}}
+X-Role: {{UserRole}}
