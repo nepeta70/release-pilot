@@ -1,75 +1,66 @@
 using Confluent.Kafka;
-using Dapper;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
-using ReleasePilot.Infrastructure.Ports;
+using ReleasePilot.Application.Ports.Repositories;
+using ReleasePilot.Domain.Events;
 using System.Text.Json;
 
 namespace ReleasePilot.Infrastructure.Messaging;
 
-/// <summary>
-/// Decoupled handler: consumes promotion events and persists an audit row.
-/// </summary>
 public sealed class PromotionEventAuditConsumer(
-    IDbConnectionFactory connectionFactory,
+    IPromotionEventAuditRepository _auditRepository,
     KafkaSettings kafkaSettings,
     ILogger<PromotionEventAuditConsumer> logger) : BackgroundService
 {
-    protected override Task ExecuteAsync(CancellationToken stoppingToken)
-        => Task.Run(() => RunLoop(stoppingToken), stoppingToken);
-
-    private void RunLoop(CancellationToken ct)
+    private readonly ILogger<PromotionEventAuditConsumer> _logger = logger ?? throw new ArgumentNullException(nameof(logger));
+    // ExecuteAsync is already designed to be async. No need for Task.Run.
+    protected override async Task ExecuteAsync(CancellationToken stoppingToken)
     {
         var config = new ConsumerConfig
         {
             BootstrapServers = kafkaSettings.BootstrapServers,
             GroupId = kafkaSettings.AuditConsumerGroupId,
             AutoOffsetReset = AutoOffsetReset.Earliest,
-            EnableAutoCommit = true
+            EnableAutoCommit = true,
+            EnableAutoOffsetStore = true
         };
 
         using var consumer = new ConsumerBuilder<string, string>(config).Build();
         consumer.Subscribe(kafkaSettings.PromotionEventsTopic);
 
-        while (!ct.IsCancellationRequested)
+        // We run on a background thread naturally because BackgroundService 
+        // is awaited by the host.
+        while (!stoppingToken.IsCancellationRequested)
         {
             try
             {
-                var cr = consumer.Consume(ct);
-                if (cr?.Message?.Value is null) continue;
+                var result = consumer.Consume(stoppingToken);
 
-                var env = JsonSerializer.Deserialize<PromotionEventEnvelope>(cr.Message.Value);
-                if (env is null) continue;
+                if (result?.Message?.Value is null) continue;
 
-                PersistAudit(env).GetAwaiter().GetResult();
+                var envelope = JsonSerializer.Deserialize<PromotionEventEnvelope>(result.Message.Value);
+                if (envelope is null) continue;
+
+                await _auditRepository.PersistAuditAsync(envelope, stoppingToken);
             }
-            catch (OperationCanceledException) when (ct.IsCancellationRequested)
+            catch (ConsumeException ex) when (ex.Error.Code == ErrorCode.UnknownTopicOrPart)
             {
+                // Just log and wait. Kafka is likely still creating the topic.
+                _logger.LogWarning("Topic {Topic} is being created or not yet visible. Retrying...", kafkaSettings.PromotionEventsTopic);
+                await Task.Delay(2000, stoppingToken);
+            }
+            catch (OperationCanceledException)
+            {
+                // Graceful shutdown
                 break;
             }
             catch (Exception ex)
             {
-                logger.LogError(ex, "Audit consumer failed.");
-                Thread.Sleep(250);
+                logger.LogError(ex, "Audit consumer loop error. Retrying in 1s...");
+                await Task.Delay(1000, stoppingToken);
             }
         }
-    }
 
-    private async Task PersistAudit(PromotionEventEnvelope env)
-    {
-        using var conn = await connectionFactory.CreateConnectionAsync();
-
-        const string sql = @"
-            INSERT INTO promotion_event_audit (promotion_id, event_type, occurred_at, acting_user)
-            VALUES (@PromotionId, @EventType, @OccurredOn, @ActingUser);";
-
-        await conn.ExecuteAsync(sql, new
-        {
-            PromotionId = env.PromotionId,
-            EventType = env.EventType,
-            OccurredOn = env.OccurredOn,
-            ActingUser = env.ActingUser
-        });
+        consumer.Close();
     }
 }
-
