@@ -2,7 +2,6 @@ using Dapper;
 using ReleasePilot.Application.Ports.Repositories;
 using ReleasePilot.Domain.Aggregates;
 using ReleasePilot.Domain.Enums;
-using System.Collections;
 using System.Data;
 using System.Text.Json;
 
@@ -37,60 +36,15 @@ public class PromotionWriteRepository(IDbConnection connection) : IPromotionWrit
                 updated_at = NOW()
             WHERE id = @Id;";
 
-        Gemini said
-To properly respect the CancellationToken in Dapper, we use the CommandDefinition struct. This ensures that the cancellation is propagated all the way to the database driver, allowing Postgres to kill the query immediately if the task is aborted.
-
-I've also fixed a small syntax error in your UpdateAsync method (missing comma before updated_at).
-
-🛠️ Refactored PromotionWriteRepository
-C#
-using Dapper;
-using ReleasePilot.Application.Ports.Repositories;
-using ReleasePilot.Domain.Aggregates;
-using ReleasePilot.Domain.Enums;
-using System.Data;
-using System.Text.Json;
-
-namespace ReleasePilot.Infrastructure.Adapters.Repositories;
-
-public class PromotionWriteRepository(IDbConnection connection) : IPromotionWriteRepository
-{
-    public async Task InsertAsync(Promotion promotion, IDbTransaction transaction, CancellationToken cancellationToken)
-    {
-        const string sql = @"
-            INSERT INTO promotions (
-                id, application_name, version, target_env, current_status, work_items, metadata, created_at, updated_at
-            ) VALUES (
-                @Id, @AppName, @Version, @TargetEnv, @Status, CAST(@WorkItems AS jsonb), CAST(@Metadata AS jsonb), NOW(), NOW()
-            );";
-
         var command = new CommandDefinition(
-            sql,
-            new InsertParams(promotion),
-            transaction: transaction,
-            cancellationToken: cancellationToken);
-
-        await connection.ExecuteAsync(command);
-    }
-
-    public async Task UpdateAsync(Promotion promotion, IDbTransaction transaction, CancellationToken cancellationToken)
-    {
-        const string sql = @"
-            UPDATE promotions SET 
-                current_status = @Status,
-                metadata = CAST(@Metadata AS jsonb),
-                updated_at = NOW()
-            WHERE id = @Id;";
-
-        var command = new CommandDefinition(
-            sql,
-            new UpdateParams(
-                promotion.Id,
-                promotion.Status.ToString(),
-                JsonSerializer.Serialize(promotion.Metadata)
-            ),
-            transaction: transaction,
-            cancellationToken: cancellationToken);
+                    sql,
+                    new UpdateParams(
+                        promotion.Id,
+                        promotion.Status.ToString(),
+                        JsonSerializer.Serialize(promotion.Metadata)
+                    ),
+                    transaction: transaction,
+                    cancellationToken: cancellationToken);
 
         await connection.ExecuteAsync(command);
     }
