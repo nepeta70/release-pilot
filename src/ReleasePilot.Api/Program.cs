@@ -1,5 +1,6 @@
 using Npgsql;
 using ReleasePilot.Api.Extensions;
+using ReleasePilot.Api.Middleware;
 using ReleasePilot.Application.DependencyInjection;
 using ReleasePilot.Domain.Exceptions;
 using ReleasePilot.Infrastructure;
@@ -72,6 +73,7 @@ else
 }
 
 app.MapPromotionEndpoints();
+app.UseMiddleware<IdentityMiddleware>();
 
 var kafkaManager = app.Services.GetRequiredService<KafkaProducerManager>();
 await kafkaManager.InitializeAsync(CancellationToken.None);
