@@ -5,7 +5,7 @@ services:
       context: ..           
       dockerfile: src/ReleasePilot.Api/Dockerfile
     ports:
-      - "5000:8080"
+      - "5000:5000"
     user: root
     entrypoint: ["sh", "-c", "apt-get update && apt-get install -y libgssapi-krb5-2 && dotnet ReleasePilot.Api.dll"]
     environment:
