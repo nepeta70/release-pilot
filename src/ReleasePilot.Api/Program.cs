@@ -1,11 +1,9 @@
 using Npgsql;
 using ReleasePilot.Api.Extensions;
 using ReleasePilot.Application.DependencyInjection;
-using ReleasePilot.Application.Ports.Output;
 using ReleasePilot.Domain.Exceptions;
 using ReleasePilot.Infrastructure;
 using ReleasePilot.Infrastructure.DependencyInjection;
-using ReleasePilot.Infrastructure.Identity;
 using ReleasePilot.Infrastructure.Messaging;
 using System.Text.Json.Serialization;
 
@@ -14,7 +12,6 @@ var builder = WebApplication.CreateBuilder(args);
 builder.Services.AddOpenApi();
 builder.Services.AddApplication();
 builder.Services.AddHttpContextAccessor();
-builder.Services.AddScoped<IUserContext, UserContextAdapter>();
 builder.Services.AddInfrastructure(builder.Configuration);
 
 builder.Services.ConfigureHttpJsonOptions(o =>

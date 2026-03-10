@@ -1,15 +1,20 @@
+using Confluent.Kafka;
 using Dapper;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Hosting;
+using Microsoft.Extensions.Logging;
 using Npgsql;
 using ReleasePilot.Application.Adapters.External;
 using ReleasePilot.Application.Ports.External;
 using ReleasePilot.Application.Ports.Messaging;
+using ReleasePilot.Application.Ports.Output;
 using ReleasePilot.Application.Ports.Repositories;
 using ReleasePilot.Domain.Enums;
 using ReleasePilot.Infrastructure.Adapters.Outbox;
 using ReleasePilot.Infrastructure.Adapters.Persistence;
 using ReleasePilot.Infrastructure.Adapters.Repositories;
+using ReleasePilot.Infrastructure.Identity;
 using ReleasePilot.Infrastructure.Messaging;
 using ReleasePilot.Infrastructure.Ports;
 using System.Data;
@@ -42,7 +47,8 @@ public static class DependencyInjection
 
         // Using NpgsqlConnection for Dapper
         services.AddScoped<IDbConnection>(_ => new NpgsqlConnection(connectionString));
-        services.AddSingleton<IDbConnectionFactory, DbConnectionFactory>();
+        services.AddScoped<IDbConnectionFactory, DbConnectionFactory>();
+        services.AddScoped<IUserContext, UserContextAdapter>();
 
         // 2. Repositories (Separated Read/Write as requested)
         services.AddScoped<IPromotionWriteRepository, PromotionWriteRepository>();
@@ -56,8 +62,31 @@ public static class DependencyInjection
         services.AddScoped<IEventOutbox, DapperEventOutbox>();
         services.AddScoped<IOutboxRepository, OutboxRepository>();
         services.AddScoped<IOutboxUnitOfWork, OutboxUnitOfWork>();
-        services.AddHostedService<OutboxProcessor>();
-        services.AddHostedService<PromotionEventAuditConsumer>();
+        services.AddSingleton<IHostedService>(sp =>
+        {
+            var scope = sp.CreateScope();
+
+            // Resolve the dependencies
+            var unitOfWork = scope.ServiceProvider.GetRequiredService<IOutboxUnitOfWork>();
+            var producer = sp.GetRequiredService<IProducer<string, string>>();
+            var settings = sp.GetRequiredService<KafkaSettings>();
+            var logger = sp.GetRequiredService<ILogger<OutboxProcessor>>();
+
+            return new OutboxProcessor(unitOfWork, producer, settings, logger);
+        });
+        services.AddSingleton<IHostedService>(sp =>
+        {
+            // Create a dedicated scope for this consumer
+            var scope = sp.CreateScope();
+
+            // Resolve the dependencies required by your constructor
+            var auditRepository = scope.ServiceProvider.GetRequiredService<IPromotionEventAuditRepository>();
+            var kafkaSettings = sp.GetRequiredService<KafkaSettings>();
+            var logger = sp.GetRequiredService<ILogger<PromotionEventAuditConsumer>>();
+
+            // Return your class with the repo injected directly
+            return new PromotionEventAuditConsumer(auditRepository, kafkaSettings, logger);
+        });
 
         // 6. External System Ports (Stubs/Adapters)
         services.AddScoped<IDeploymentPort, StubDeploymentAdapter>();
