@@ -1,10 +1,12 @@
-﻿namespace ReleasePilot.Application.Dtos;
+﻿using ReleasePilot.Domain.Enums;
+
+namespace ReleasePilot.Application.Dtos;
 
 public record PromotionDetailsDto(
     Guid Id,
     string ApplicationName,
     string Version,
-    string TargetEnv,
+    DeploymentEnvironment TargetEnv,
     string Status,
     DateTime CreatedAt,
     IEnumerable<PromotionHistoryDto> History);
@@ -16,7 +18,7 @@ public record PromotionHistoryDto(
     string User);
 
 public record EnvStatusDto(
-    string Environment,
+    DeploymentEnvironment Environment,
     string? Version,
     string Status,
     DateTime? UpdatedAt);
@@ -24,7 +26,7 @@ public record EnvStatusDto(
 public record PromotionSummaryDto(
     Guid Id,
     string Version,
-    string TargetEnv,
+    DeploymentEnvironment TargetEnv,
     string Status,
     DateTime CreatedAt);
 

@@ -20,6 +20,7 @@ public class PromotionCommandHandler :
 {
     private readonly IUserContext _userContext;
     private readonly IPromotionWriteRepository _repository;
+    private readonly IPromotionReadRepository _readRepository;
     private readonly IDbConnection _dbConnection;
     private readonly IDeploymentPort _deploymentPort;
     private readonly INotificationPort _notificationPort;
@@ -28,6 +29,7 @@ public class PromotionCommandHandler :
     public PromotionCommandHandler(
         IUserContext userContext,
         IPromotionWriteRepository repository,
+        IPromotionReadRepository readRepository,
         IDbConnection dbConnection,
         IDeploymentPort deploymentPort,
         INotificationPort notificationPort,
@@ -35,6 +37,7 @@ public class PromotionCommandHandler :
     {
         _userContext = userContext;
         _repository = repository;
+        _readRepository = readRepository;
         _dbConnection = dbConnection;
         _deploymentPort = deploymentPort;
         _notificationPort = notificationPort;
@@ -43,9 +46,19 @@ public class PromotionCommandHandler :
 
     public async Task<Guid> Handle(RequestPromotionCommand request, CancellationToken ct)
     {
+        var targetEnv = Enum.Parse<DeploymentEnvironment>(request.TargetEnv, ignoreCase: true);
+
+        var currentStatus = await _readRepository.GetStatusByAppAsync(request.AppName, ct);
+        var existingPromotion = currentStatus.LastOrDefault(s => s.Environment == targetEnv);
+        if (existingPromotion is not null)
+        {
+            var sourceEnv = Enum.Parse<DeploymentEnvironment>(request.TargetEnv, ignoreCase: true);
+
+        }
+
         using var transaction = StartTransaction();
         var id = Guid.NewGuid();
-        var targetEnv = Enum.Parse<DeploymentEnvironment>(request.TargetEnv, ignoreCase: true);
+
 
         var promotion = Promotion.Request(
             id,
