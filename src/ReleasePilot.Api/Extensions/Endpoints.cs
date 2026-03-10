@@ -57,6 +57,18 @@ public static class PromotionEndpoints
             return dto is null ? Results.NotFound() : Results.Ok(dto);
         });
 
+        group.MapGet("/{application}/status", async (string application, ISender sender, CancellationToken ct) =>
+        {
+            var dto = await sender.Send(new GetEnvironmentStatusQuery(application), ct);
+            return dto is null ? Results.NotFound() : Results.Ok(dto);
+        });
+
+        group.MapGet("/{application}/list/{page}/{pageSize}", async (string application, ISender sender, CancellationToken ct, int page = 1, int pageSize = 10) =>
+        {
+            var dto = await sender.Send(new ListPromotionsQuery(application, page, pageSize), ct);
+            return dto is null ? Results.NotFound() : Results.Ok(dto);
+        });
+
         return app;
     }
 }

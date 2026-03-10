@@ -12,7 +12,7 @@ public class PromotionReadRepository(IDbConnection connection) : IPromotionReadR
     {
         const string sql = @"
             SELECT 
-                p.id, p.application_name, p.version, p.target_env, p.current_status, p.created_at,
+                p.id, p.application_name, p.version, p.target_env, p.current_status, p.created_at, p.updated_at,
                 l.from_status, l.to_status, l.occurred_at, l.acting_user
             FROM promotions p
             LEFT JOIN promotion_audit_logs l ON p.id = l.promotion_id
@@ -71,7 +71,7 @@ public class PromotionReadRepository(IDbConnection connection) : IPromotionReadR
                     p.target_env AS env,
                     p.version,
                     p.current_status::text AS status,
-                    p.updated_at AS updated_at
+                    p.updated_at
                 FROM promotions p
                 WHERE p.application_name = @appName
                 ORDER BY p.target_env, p.updated_at DESC

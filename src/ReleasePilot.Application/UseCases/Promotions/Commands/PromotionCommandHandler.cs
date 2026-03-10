@@ -1,4 +1,5 @@
 using MediatR;
+using Microsoft.Extensions.Logging;
 using ReleasePilot.Application.Ports.External;
 using ReleasePilot.Application.Ports.Messaging;
 using ReleasePilot.Application.Ports.Output;
@@ -25,6 +26,7 @@ public class PromotionCommandHandler :
     private readonly IDeploymentPort _deploymentPort;
     private readonly INotificationPort _notificationPort;
     private readonly IEventOutbox _outbox;
+    private readonly ILogger _logger;
 
     public PromotionCommandHandler(
         IUserContext userContext,
@@ -33,7 +35,8 @@ public class PromotionCommandHandler :
         IDbConnection dbConnection,
         IDeploymentPort deploymentPort,
         INotificationPort notificationPort,
-        IEventOutbox outbox)
+        IEventOutbox outbox,
+        ILoggerFactory loggerFactory)
     {
         _userContext = userContext;
         _repository = repository;
@@ -42,6 +45,7 @@ public class PromotionCommandHandler :
         _deploymentPort = deploymentPort;
         _notificationPort = notificationPort;
         _outbox = outbox;
+        _logger = loggerFactory.CreateLogger<PromotionCommandHandler>();
     }
 
     public async Task<Guid> Handle(RequestPromotionCommand request, CancellationToken ct)
@@ -54,10 +58,10 @@ public class PromotionCommandHandler :
         {
             var sourceEnv = Enum.Parse<DeploymentEnvironment>(request.TargetEnv, ignoreCase: true);
             var requiredPrevious = targetEnv.GetRequiredPrevious();
-            var previousIsCompleted = currentStatus.Any(s => s.Environment == sourceEnv && s.Status == PromotionStatus.Completed);
+            var previousIsCompleted = currentStatus.Any(s => s.Environment == requiredPrevious && s.Status == PromotionStatus.Completed);
             if (targetEnv != DeploymentEnvironment.Dev && !previousIsCompleted)
             {
-                throw new DomainException($"Cannot promote from {requiredPrevious} to {targetEnv}.");
+                throw new DomainException($"You must release {requiredPrevious} before {targetEnv}.");
             }
         }
 
