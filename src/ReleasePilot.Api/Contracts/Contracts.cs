@@ -3,9 +3,7 @@
 public sealed record RequestPromotionBody(
     string AppName,
     string Version,
-    string SourceEnv,
     string TargetEnv,
-    IReadOnlyList<string>? WorkItemIds,
-    string? RequestedBy);
+    IReadOnlyList<string>? WorkItemIds);
 
 public sealed record RollbackPromotionBody(string Reason);

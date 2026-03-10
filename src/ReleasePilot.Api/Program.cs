@@ -35,6 +35,10 @@ app.Use(async (ctx, next) =>
     {
         await next();
     }
+    catch (UnauthorizedAccessException ex) {
+        ctx.Response.StatusCode = StatusCodes.Status403Forbidden;
+        await ctx.Response.WriteAsJsonAsync(new { error = ex.Message });
+    }
     catch (DomainException ex)
     {
         ctx.Response.StatusCode = ex.Message switch
@@ -50,7 +54,7 @@ app.Use(async (ctx, next) =>
     {
         ctx.Response.StatusCode = StatusCodes.Status409Conflict;
         await ctx.Response.WriteAsJsonAsync(new { error = PromotionErrors.EnvironmentLocked });
-    }
+    }   
     catch (ArgumentException ex)
     {
         ctx.Response.StatusCode = StatusCodes.Status400BadRequest;
