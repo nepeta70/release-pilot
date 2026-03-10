@@ -9,36 +9,48 @@ namespace ReleasePilot.Infrastructure.Adapters.Repositories;
 
 public class PromotionWriteRepository(IDbConnection connection) : IPromotionWriteRepository
 {
-    public async Task InsertAsync(Promotion promotion, IDbTransaction transaction, CancellationToken cancellationToken)
+    public async Task InsertAsync(Promotion promotion, string createdBy, IDbTransaction transaction, CancellationToken cancellationToken)
     {
         const string sql = @"
             INSERT INTO promotions (
-                id, application_name, version, target_env, current_status, work_items, metadata, created_at, updated_at
+                id, application_name, version, target_env, current_status, work_items, metadata, created_at, updated_at, last_updated_by
             ) VALUES (
                 @Id, @AppName, @Version, @TargetEnv, 
                 CAST(@Status AS promotion_status),
                 CAST(@WorkItems AS jsonb), 
                 CAST(@Metadata AS jsonb), 
                 NOW(), 
-                NOW()
+                NOW(),
+                @CreatedBy
             );";
 
         var command = new CommandDefinition(
                     sql,
-                    new InsertParams(promotion),
+                    new
+                    {
+                        Id =  promotion.Id,
+                        AppName= promotion.ApplicationName,
+                        Version= promotion.Version,
+                        TargetEnv= promotion.TargetEnvironment.ToString(),
+                        Status= promotion.Status.ToString(),
+                        WorkItems= JsonSerializer.Serialize(promotion.WorkItems),
+                        Metadata= JsonSerializer.Serialize(promotion.Metadata),
+                        CreatedBy = createdBy
+                    },
                     transaction: transaction,
                     cancellationToken: cancellationToken);
 
         await connection.ExecuteAsync(command);
     }
 
-    public async Task UpdateAsync(Promotion promotion, IDbTransaction transaction, CancellationToken cancellationToken)
+    public async Task UpdateAsync(Promotion promotion, string updatedBy, IDbTransaction transaction, CancellationToken cancellationToken)
     {
         const string sql = @"
             UPDATE promotions SET 
                 current_status = CAST(@Status AS promotion_status),
                 metadata = CAST(@Metadata AS jsonb),
-                updated_at = NOW()
+                updated_at = NOW(),
+                last_updated_by = @UpdatedBy
             WHERE id = @Id;";
 
         var command = new CommandDefinition(
@@ -47,7 +59,8 @@ public class PromotionWriteRepository(IDbConnection connection) : IPromotionWrit
                     {
                         promotion.Id,
                         Status = promotion.Status.ToString(),
-                        Metadata = JsonSerializer.Serialize(promotion.Metadata)
+                        Metadata = JsonSerializer.Serialize(promotion.Metadata),
+                        UpdatedBy = updatedBy
                     },
                     transaction: transaction,
                     cancellationToken: cancellationToken);
@@ -127,25 +140,7 @@ public class PromotionWriteRepository(IDbConnection connection) : IPromotionWrit
         return await connection.ExecuteScalarAsync<bool>(command);
     }
 
-    private record InsertParams(
-        Guid Id,
-        string AppName,
-        string Version,
-        string TargetEnv,
-        string Status,
-        string WorkItems,
-        string Metadata)
-    {
-        public InsertParams(Promotion p) : this(
-            p.Id,
-            p.ApplicationName,
-            p.Version,
-            p.TargetEnvironment.ToString(),
-            p.Status.ToString(),
-            JsonSerializer.Serialize(p.WorkItems),
-            JsonSerializer.Serialize(p.Metadata))
-        { }
-    }
+
 
     private static IReadOnlyList<string> ParseWorkItems(string? json)
     {

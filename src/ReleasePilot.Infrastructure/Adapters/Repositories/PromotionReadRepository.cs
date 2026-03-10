@@ -21,37 +21,33 @@ public class PromotionReadRepository(IDbConnection connection) : IPromotionReadR
             ";
 
         PromotionDetailsDto? result = null;
+        var historyList = new List<PromotionHistoryDto>();
 
         var command = new CommandDefinition(
         commandText: sql,
         parameters: new { id },
         cancellationToken: cancellationToken);
 
-        await connection.QueryAsync<PromotionReadEntity, AuditLogEntity, PromotionDetailsDto?>(
+        await connection.QueryAsync<PromotionReadEntity, PromotionHistoryEntity, PromotionDetailsDto?>(
             command: command,
             map: (p, l) =>
             {
                 result ??= new PromotionDetailsDto(
-                    p.id,
-                    p.application_name,
-                    p.version,
-                    Enum.Parse<DeploymentEnvironment>(p.target_env, ignoreCase: true),
-                    Enum.Parse<PromotionStatus>(p.current_status, ignoreCase: true),
-                    p.created_at,
-                    p.updated_at,
-                    []);
-
-                if (l != null && l.to_status != null)
+                        p.id,
+                        p.application_name,
+                        p.version,
+                        Enum.Parse<DeploymentEnvironment>(p.target_env, ignoreCase: true),
+                        Enum.Parse<PromotionStatus>(p.current_status, ignoreCase: true),
+                        p.created_at,
+                        p.updated_at,
+                        historyList);
+                if (l?.to_status != null)
                 {
-                    // Cast to List to allow appending history items from the join
-                    if (result.History is List<PromotionHistoryDto> historyList)
-                    {
-                        historyList.Add(new PromotionHistoryDto(
-                            l.from_status != null ? Enum.Parse<PromotionStatus>(l.from_status, ignoreCase: true) : null,
-                            Enum.Parse<PromotionStatus>(l.to_status, ignoreCase: true),
-                            l.occurred_at,
-                            l.acting_user ?? "System"));
-                    }
+                    historyList.Add(new PromotionHistoryDto(
+                        l.from_status != null ? Enum.Parse<PromotionStatus>(l.from_status, ignoreCase: true) : null,
+                        Enum.Parse<PromotionStatus>(l.to_status, ignoreCase: true),
+                        l.occurred_at,
+                        l.acting_user ?? "System"));
                 }
                 return null;
             },
@@ -150,15 +146,11 @@ internal record PromotionReadEntity
     public DateTime updated_at { get; init; }
 }
 
-internal record AuditLogEntity
-{
-    public long id { get; init; }
-    public Guid promotion_id { get; init; }
-    public string? from_status { get; init; }
-    public string to_status { get; init; } = null!;
-    public string? acting_user { get; init; }
-    public DateTime occurred_at { get; init; }
-}
+internal record PromotionHistoryEntity(
+    string from_status,
+    string to_status,
+    DateTime occurred_at,
+    string acting_user);
 
 internal record EnvStatusEntity(
     string Environment,

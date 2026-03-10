@@ -7,7 +7,8 @@
     work_items JSONB NOT NULL DEFAULT '[]', -- References to external issue tracker
     metadata JSONB, -- For extensibility (e.g. rollback reasons)
     created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
-    updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+    updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    last_updated_by VARCHAR(100) -- For audit purposes
 );
 
 -- The "Only one InProgress per App+Env" constraint (Functional Index)
@@ -37,6 +38,7 @@ BEGIN
             from_status, 
             to_status, 
             occurred_at,
+            acting_user,
             context
         )
         VALUES (
@@ -44,6 +46,7 @@ BEGIN
             CASE WHEN TG_OP = 'INSERT' THEN NULL ELSE OLD.current_status END,
             NEW.current_status,
             NOW(),
+            NEW.last_updated_by,
             jsonb_build_object(
                 'version', NEW.version,
                 'op', TG_OP,

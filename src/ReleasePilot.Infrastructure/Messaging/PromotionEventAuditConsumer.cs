@@ -13,7 +13,7 @@ public sealed class PromotionEventAuditConsumer(
     ILogger<PromotionEventAuditConsumer> logger) : BackgroundService
 {
     private readonly ILogger<PromotionEventAuditConsumer> _logger = logger ?? throw new ArgumentNullException(nameof(logger));
-    // ExecuteAsync is already designed to be async. No need for Task.Run.
+
     protected override async Task ExecuteAsync(CancellationToken stoppingToken)
     {
         var config = new ConsumerConfig
@@ -28,8 +28,6 @@ public sealed class PromotionEventAuditConsumer(
         using var consumer = new ConsumerBuilder<string, string>(config).Build();
         consumer.Subscribe(kafkaSettings.PromotionEventsTopic);
 
-        // We run on a background thread naturally because BackgroundService 
-        // is awaited by the host.
         while (!stoppingToken.IsCancellationRequested)
         {
             try
@@ -45,7 +43,6 @@ public sealed class PromotionEventAuditConsumer(
             }
             catch (ConsumeException ex) when (ex.Error.Code == ErrorCode.UnknownTopicOrPart)
             {
-                // Just log and wait. Kafka is likely still creating the topic.
                 _logger.LogWarning("Topic {Topic} is being created or not yet visible. Retrying...", kafkaSettings.PromotionEventsTopic);
                 await Task.Delay(2000, stoppingToken);
             }

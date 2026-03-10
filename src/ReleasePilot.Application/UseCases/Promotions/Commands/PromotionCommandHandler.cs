@@ -61,6 +61,7 @@ public class PromotionCommandHandler :
             var previousIsCompleted = currentStatus.Any(s => s.Environment == requiredPrevious && s.Status == PromotionStatus.Completed);
             if (targetEnv != DeploymentEnvironment.Dev && !previousIsCompleted)
             {
+                _logger.LogWarning("Promotion request for {AppName} to {TargetEnv} blocked due to incomplete promotion in {RequiredPrevious}.", request.AppName, targetEnv, requiredPrevious);
                 throw new DomainException($"You must release {requiredPrevious} before {targetEnv}.");
             }
         }
@@ -76,9 +77,10 @@ public class PromotionCommandHandler :
             request.WorkItemIds,
             _userContext.GetCurrent().Name);
 
-        await _repository.InsertAsync(promotion, transaction, ct);
+        await _repository.InsertAsync(promotion, _userContext.GetCurrent().Name, transaction, ct);
         await PersistDomainEvents(promotion, transaction, ct);
         transaction.Commit();
+        _logger.LogInformation("Promotion requested for {AppName} version {Version} to {TargetEnv} by {User}.", request.AppName, request.Version, targetEnv, _userContext.GetCurrent().Name);
         return id;
     }
 
@@ -93,11 +95,11 @@ public class PromotionCommandHandler :
             excludePromotionId: promotion.Id,
             transaction, ct);
 
-      var user = _userContext.GetCurrent();
+        var user = _userContext.GetCurrent();
         promotion.Approve(user.Role, user.Name, locked);
 
-        await _repository.UpdateAsync(promotion, transaction, ct);
-        await PersistDomainEvents(promotion, transaction, ct);
+        await PersistAndSendEvents(transaction, promotion, ct);
+        _logger.LogInformation("Promotion {PromotionId} for {AppName} to {TargetEnv} approved by {User}.", promotion.Id, promotion.ApplicationName, promotion.TargetEnvironment, user.Name);
         transaction.Commit();
     }
 
@@ -121,8 +123,8 @@ public class PromotionCommandHandler :
             promotion.Version,
             promotion.TargetEnvironment.ToString());
 
-        await _repository.UpdateAsync(promotion, transaction, ct);
-        await PersistDomainEvents(promotion, transaction, ct);
+        await PersistAndSendEvents(transaction, promotion, ct);
+        _logger.LogInformation("Deployment started for promotion {PromotionId} of {AppName} to {TargetEnv} by {User}.", promotion.Id, promotion.ApplicationName, promotion.TargetEnvironment, user.Name);
         transaction.Commit();
     }
 
@@ -134,8 +136,7 @@ public class PromotionCommandHandler :
         var user = _userContext.GetCurrent();
         promotion.Complete(user.Name);
 
-        await _repository.UpdateAsync(promotion, transaction, ct);
-        await PersistDomainEvents(promotion, transaction, ct);
+        await PersistAndSendEvents(transaction, promotion, ct);
         transaction.Commit();
         await _notificationPort.NotifyStatusChangeAsync(promotion.Id, promotion.ApplicationName, "Completed");
     }
@@ -148,8 +149,7 @@ public class PromotionCommandHandler :
         var user = _userContext.GetCurrent();
         promotion.Rollback(request.Reason, user.Name);
 
-        await _repository.UpdateAsync(promotion, transaction, ct);
-        await PersistDomainEvents(promotion, transaction, ct);
+        await PersistAndSendEvents(transaction, promotion, ct);
         transaction.Commit();
         await _notificationPort.NotifyStatusChangeAsync(promotion.Id, promotion.ApplicationName, "RolledBack");
     }
@@ -162,8 +162,8 @@ public class PromotionCommandHandler :
         var user = _userContext.GetCurrent();
         promotion.Cancel(user.Name);
 
-        await _repository.UpdateAsync(promotion, transaction, ct);
-        await PersistDomainEvents(promotion, transaction, ct);
+        await PersistAndSendEvents(transaction, promotion, ct);
+        _logger.LogInformation("Promotion {PromotionId} for {AppName} to {TargetEnv} cancelled by {User}.", promotion.Id, promotion.ApplicationName, promotion.TargetEnvironment, user.Name);
         transaction.Commit();
     }
 
@@ -186,5 +186,11 @@ public class PromotionCommandHandler :
             await _outbox.SaveEventAsync(@event, promotion.Id, transaction, cancellationToken);
         }
         promotion.ClearEvents();
+    }
+    private async Task PersistAndSendEvents(IDbTransaction transaction, Promotion promotion, CancellationToken ct)
+    {
+        var user = _userContext.GetCurrent();
+        await _repository.UpdateAsync(promotion, user.Name, transaction, ct);
+        await PersistDomainEvents(promotion, transaction, ct);
     }
 }
