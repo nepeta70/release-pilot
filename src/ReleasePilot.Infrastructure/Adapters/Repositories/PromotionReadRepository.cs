@@ -1,6 +1,7 @@
 using Dapper;
 using ReleasePilot.Application.Dtos;
 using ReleasePilot.Application.Ports.Repositories;
+using ReleasePilot.Domain.Enums;
 using System.Data;
 
 namespace ReleasePilot.Infrastructure.Adapters.Repositories;
@@ -34,7 +35,7 @@ public class PromotionReadRepository(IDbConnection connection) : IPromotionReadR
                     p.id,
                     p.application_name,
                     p.version,
-                    p.target_env,
+                    Enum.Parse<DeploymentEnvironment>(p.target_env, ignoreCase: true),
                     p.current_status,
                     p.created_at,
                     []);
@@ -64,12 +65,9 @@ public class PromotionReadRepository(IDbConnection connection) : IPromotionReadR
         // Dashboard-style: always return Dev/Staging/Production, even if empty.
         // Promotions only target Staging/Production, but the caller expects all environments.
         const string sql = @"
-            WITH envs AS (
-                SELECT unnest(ARRAY['Dev','Staging','Production']) AS env
-            ),
-            latest AS (
+            WITH latest AS (
                 SELECT DISTINCT ON (p.target_env)
-                    p.target_env::text AS env,
+                    p.target_env AS env,
                     p.version,
                     p.current_status::text AS status,
                     p.updated_at AS updated_at
@@ -78,19 +76,13 @@ public class PromotionReadRepository(IDbConnection connection) : IPromotionReadR
                 ORDER BY p.target_env, p.updated_at DESC
             )
             SELECT
-                envs.env AS Environment,
+                envs.name AS Environment,
                 latest.version AS Version,
                 COALESCE(latest.status, 'None') AS Status,
                 latest.updated_at AS UpdatedAt
-            FROM envs
-            LEFT JOIN latest ON latest.env = envs.env
-            ORDER BY
-                CASE envs.env
-                    WHEN 'Dev' THEN 1
-                    WHEN 'Staging' THEN 2
-                    WHEN 'Production' THEN 3
-                    ELSE 4
-                END;";
+            FROM deployment_environments envs
+            LEFT JOIN latest ON latest.env = envs.name
+            ORDER BY envs.sort_order;";
 
         var command = new CommandDefinition(
                     sql,

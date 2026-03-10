@@ -64,3 +64,6 @@ coverage.*
 #docker compose used in my local environment
 docker-compose.yml
 
+/.postman
+/postman
+/scripts

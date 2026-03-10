@@ -2,7 +2,7 @@
     id UUID PRIMARY KEY,
     application_name VARCHAR(100) NOT NULL,
     version VARCHAR(50) NOT NULL,
-    target_env deployment_environment NOT NULL,
+    target_env VARCHAR(20) NOT NULL REFERENCES deployment_environments(name),
     current_status promotion_status NOT NULL DEFAULT 'Requested',
     work_items JSONB NOT NULL DEFAULT '[]', -- References to external issue tracker
     metadata JSONB, -- For extensibility (e.g. rollback reasons)
