@@ -12,6 +12,8 @@ services:
       - ConnectionStrings__DefaultConnection=Host=postgres;Database=release_db;Username=postgres;Password=postgres
       - NPGSQL_DISABLE_GSSAPI=true 
       - Kafka__BootstrapServers=kafka:9092
+      - ASPNETCORE_URLS=http://+:5000
+      - ASPNETCORE_ENVIRONMENT=Development
     depends_on:
       postgres:
         condition: service_healthy

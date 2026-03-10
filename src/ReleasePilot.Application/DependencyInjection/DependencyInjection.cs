@@ -13,7 +13,6 @@ public static class DependencyInjection
 
             // Your custom behaviors
             cfg.AddOpenBehavior(typeof(ErrorHandlingBehavior<,>));
-            cfg.AddOpenBehavior(typeof(ConcurrencyPipelineBehavior<,>));
         });
 
         // If you add FluentValidation later, it goes here too:
