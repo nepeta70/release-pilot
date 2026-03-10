@@ -15,7 +15,12 @@ public class PromotionWriteRepository(IDbConnection connection) : IPromotionWrit
             INSERT INTO promotions (
                 id, application_name, version, target_env, current_status, work_items, metadata, created_at, updated_at
             ) VALUES (
-                @Id, @AppName, @Version, @TargetEnv, @Status, CAST(@WorkItems AS jsonb), CAST(@Metadata AS jsonb), NOW(), NOW()
+                @Id, @AppName, @Version, @TargetEnv, 
+                CAST(@Status AS promotion_status),
+                CAST(@WorkItems AS jsonb), 
+                CAST(@Metadata AS jsonb), 
+                NOW(), 
+                NOW()
             );";
 
         var command = new CommandDefinition(
@@ -31,18 +36,19 @@ public class PromotionWriteRepository(IDbConnection connection) : IPromotionWrit
     {
         const string sql = @"
             UPDATE promotions SET 
-                current_status = @Status,
-                metadata = CAST(@Metadata AS jsonb)
+                current_status = CAST(@Status AS promotion_status),
+                metadata = CAST(@Metadata AS jsonb),
                 updated_at = NOW()
             WHERE id = @Id;";
 
         var command = new CommandDefinition(
                     sql,
-                    new UpdateParams(
+                    new
+                    {
                         promotion.Id,
-                        promotion.Status.ToString(),
-                        JsonSerializer.Serialize(promotion.Metadata)
-                    ),
+                        Status = promotion.Status.ToString(),
+                        Metadata = JsonSerializer.Serialize(promotion.Metadata)
+                    },
                     transaction: transaction,
                     cancellationToken: cancellationToken);
 
@@ -140,8 +146,6 @@ public class PromotionWriteRepository(IDbConnection connection) : IPromotionWrit
             JsonSerializer.Serialize(p.Metadata))
         { }
     }
-
-    private record UpdateParams(Guid Id, string Status, string Metadata);
 
     private static IReadOnlyList<string> ParseWorkItems(string? json)
     {

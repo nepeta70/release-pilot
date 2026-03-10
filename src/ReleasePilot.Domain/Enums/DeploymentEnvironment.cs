@@ -2,6 +2,7 @@
 
 public enum DeploymentEnvironment
 {
+    None = 0,
     Dev = 1,
     Staging = 2,
     Production = 3
@@ -9,11 +10,11 @@ public enum DeploymentEnvironment
 
 public static class EnvironmentExtensions
 {
-    public static DeploymentEnvironment? GetRequiredPrevious(this DeploymentEnvironment current) =>
+    public static DeploymentEnvironment GetRequiredPrevious(this DeploymentEnvironment current) =>
         current switch
         {
             DeploymentEnvironment.Staging => DeploymentEnvironment.Dev,
             DeploymentEnvironment.Production => DeploymentEnvironment.Staging,
-            _ => null
+            _ => DeploymentEnvironment.None
         };
 }

@@ -22,16 +22,14 @@ namespace ReleasePilot.Infrastructure.DependencyInjection;
 
 public static class PostgresSetup
 {
-    public static void MapPostgresTypes()
+    public static void MapPostgresTypes(string connectionString)
     {
         // Tell Npgsql to map the DB Enum to our Domain Enum
-        var dataSourceBuilder = new NpgsqlDataSourceBuilder("DefaultConnection");
-        dataSourceBuilder.MapEnum<DeploymentEnvironment>("deployment_environment");
+        var dataSourceBuilder = new NpgsqlDataSourceBuilder(connectionString);
         dataSourceBuilder.MapEnum<PromotionStatus>("promotion_status");
 
         // This ensures Dapper understands the translation
         SqlMapper.AddTypeHandler(new PromotionStatusHandler());
-        SqlMapper.AddTypeHandler(new DeploymentEnvironmentHandler());
     }
 }
 
@@ -44,6 +42,7 @@ public static class DependencyInjection
         // 1. Database Connection (Postgres)
         var connectionString = configuration.GetConnectionString("DefaultConnection")
             ?? throw new InvalidOperationException("Connection string 'DefaultConnection' not found.");
+        PostgresSetup.MapPostgresTypes(connectionString);
 
         // Using NpgsqlConnection for Dapper
         services.AddScoped<IDbConnection>(_ => new NpgsqlConnection(connectionString));
@@ -95,6 +94,7 @@ public static class DependencyInjection
 
         // 4. Kafka Outbox / Producers (Stub for now or real Confluent implementation)
         // services.AddSingleton<IKafkaProducer, KafkaProducer>();
+
 
         return services;
     }

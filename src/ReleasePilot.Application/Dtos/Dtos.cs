@@ -7,27 +7,27 @@ public record PromotionDetailsDto(
     string ApplicationName,
     string Version,
     DeploymentEnvironment TargetEnv,
-    string Status,
+    PromotionStatus Status,
     DateTime CreatedAt,
     IEnumerable<PromotionHistoryDto> History);
 
 public record PromotionHistoryDto(
-    string FromStatus,
-    string ToStatus,
+    PromotionStatus? FromStatus,
+    PromotionStatus ToStatus,
     DateTime OccurredAt,
     string User);
 
 public record EnvStatusDto(
     DeploymentEnvironment Environment,
     string? Version,
-    string Status,
+    PromotionStatus Status,
     DateTime? UpdatedAt);
 
 public record PromotionSummaryDto(
     Guid Id,
     string Version,
     DeploymentEnvironment TargetEnv,
-    string Status,
+    PromotionStatus Status,
     DateTime CreatedAt);
 
 public record PagedResult<T>(

@@ -36,7 +36,7 @@ public class PromotionReadRepository(IDbConnection connection) : IPromotionReadR
                     p.application_name,
                     p.version,
                     Enum.Parse<DeploymentEnvironment>(p.target_env, ignoreCase: true),
-                    p.current_status,
+                    Enum.Parse<PromotionStatus>(p.current_status, ignoreCase: true),
                     p.created_at,
                     []);
 
@@ -46,8 +46,8 @@ public class PromotionReadRepository(IDbConnection connection) : IPromotionReadR
                     if (result.History is List<PromotionHistoryDto> historyList)
                     {
                         historyList.Add(new PromotionHistoryDto(
-                            l.from_status ?? string.Empty,
-                            l.to_status,
+                            l.from_status != null ? Enum.Parse<PromotionStatus>(l.from_status, ignoreCase: true) : null,
+                            Enum.Parse<PromotionStatus>(l.to_status, ignoreCase: true),
                             l.occurred_at,
                             l.acting_user ?? "System"));
                     }
@@ -89,7 +89,13 @@ public class PromotionReadRepository(IDbConnection connection) : IPromotionReadR
                     new { appName },
                     cancellationToken: cancellationToken);
 
-        return await connection.QueryAsync<EnvStatusDto>(command);
+        var res = await connection.QueryAsync<EnvStatusEntity>(command);
+        return res.Select(e => new EnvStatusDto(
+            Environment: Enum.Parse<DeploymentEnvironment>(e.Environment, ignoreCase: true),
+            Version: e.Version,
+            Status: Enum.Parse<PromotionStatus>(e.Status, ignoreCase: true),
+            UpdatedAt: e.UpdatedAt));
+
     }
 
     public async Task<PagedResult<PromotionSummaryDto>> ListByAppAsync(string appName, int page, int pageSize, CancellationToken cancellationToken)
@@ -116,14 +122,21 @@ public class PromotionReadRepository(IDbConnection connection) : IPromotionReadR
 
         using var multi = await connection.QueryMultipleAsync(command);
 
-        var items = await multi.ReadAsync<PromotionSummaryDto>();
+        var rows = await multi.ReadAsync<PromotionSummaryEntity>();
         var total = await multi.ReadFirstAsync<int>();
+
+        var items = rows.Select(r => new PromotionSummaryDto(
+            Id: r.Id,
+            Version: r.Version,
+            TargetEnv: Enum.Parse<DeploymentEnvironment>(r.TargetEnv, ignoreCase: true),
+            Status: Enum.Parse<PromotionStatus>(r.Status, ignoreCase: true),
+            CreatedAt: r.CreatedAt));
 
         return new PagedResult<PromotionSummaryDto>(items, total, page, pageSize);
     }
 }
 
-public record PromotionReadEntity
+internal record PromotionReadEntity
 {
     public Guid id { get; init; }
     public string application_name { get; init; } = null!;
@@ -136,7 +149,7 @@ public record PromotionReadEntity
     public DateTime updated_at { get; init; }
 }
 
-public record AuditLogEntity
+internal record AuditLogEntity
 {
     public long id { get; init; }
     public Guid promotion_id { get; init; }
@@ -145,3 +158,16 @@ public record AuditLogEntity
     public string? acting_user { get; init; }
     public DateTime occurred_at { get; init; }
 }
+
+internal record EnvStatusEntity(
+    string Environment,
+    string? Version,
+    string Status,
+    DateTime? UpdatedAt);
+
+internal record PromotionSummaryEntity(
+    Guid Id,
+    string Version,
+    string TargetEnv,
+    string Status,
+    DateTime CreatedAt);

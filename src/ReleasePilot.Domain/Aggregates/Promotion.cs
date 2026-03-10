@@ -11,11 +11,10 @@ public class Promotion
     public string ApplicationName { get;  }
     public string Version { get; }
     public DeploymentEnvironment TargetEnvironment { get; }
-    public PromotionStatus Status { get; private set; }
     public IReadOnlyList<string> WorkItemIds { get; }
     public DateTime CreatedAt { get; }
+    public PromotionStatus Status { get; private set; }
     public DateTime? UpdatedAt { get; private set; }
-
     public Dictionary<string, string> Metadata { get; }
 
     private readonly List<PromotionEvent> _domainEvents = [];
@@ -58,8 +57,15 @@ public class Promotion
 
         // Environments are fixed-order: Dev -> Staging -> Production. Promotions cannot skip.
         // Target must be the immediate next environment after source.
-        var requiredPrevious = targetEnv.GetRequiredPrevious() ?? throw new DomainException("Target environment cannot be Dev.");
-        
+        if (targetEnv != DeploymentEnvironment.Dev)
+        {
+            var requiredPrevious = targetEnv.GetRequiredPrevious();
+            if (requiredPrevious == DeploymentEnvironment.None)
+            {
+                throw new DomainException($"Cannot promote from {requiredPrevious} to {targetEnv}.");
+            }
+        }
+      
         var now = DateTime.UtcNow;
         var actor = string.IsNullOrWhiteSpace(requestedBy) ? "System" : requestedBy.Trim();
         var promotion = new Promotion(

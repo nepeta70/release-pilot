@@ -53,12 +53,16 @@ public class PromotionCommandHandler :
         if (existingPromotion is not null)
         {
             var sourceEnv = Enum.Parse<DeploymentEnvironment>(request.TargetEnv, ignoreCase: true);
-
+            var requiredPrevious = targetEnv.GetRequiredPrevious();
+            var previousIsCompleted = currentStatus.Any(s => s.Environment == sourceEnv && s.Status == PromotionStatus.Completed);
+            if (targetEnv != DeploymentEnvironment.Dev && !previousIsCompleted)
+            {
+                throw new DomainException($"Cannot promote from {requiredPrevious} to {targetEnv}.");
+            }
         }
 
         using var transaction = StartTransaction();
         var id = Guid.NewGuid();
-
 
         var promotion = Promotion.Request(
             id,
