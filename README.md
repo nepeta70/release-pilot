@@ -12,7 +12,7 @@ ReleasePilot is an internal platform that manages application version promotions
 From the repo root:
 
 ```bash
-docker compose up -d
+docker compose -f docker/docker-compose.yaml up --build -d
 ```
 
 This starts:
@@ -40,64 +40,88 @@ The API runs on the URLs shown in `src/ReleasePilot.Api/Properties/launchSetting
 ### RequestPromotion
 
 ```bash
-curl -X POST http://localhost:5299/promotions ^
-  -H "Content-Type: application/json" ^
-  -d "{ \"appName\": \"payments\", \"version\": \"1.2.3\", \"sourceEnv\": \"Dev\", \"targetEnv\": \"Staging\", \"workItemIds\": [\"WI-1\",\"BUG-22\"], \"requestedBy\": \"alice\" }"
+curl --location --request PUT 'http://localhost:5000/promotions' \
+--header 'X-User-Name: pepe' \
+--header 'X-Role: Approver' \
+--header 'Content-Type: application/json' \
+--data '{
+  "appName": "ReleasePilot.Api",
+  "version": "1.2.4-beta",
+  "targetEnv": "Dev",
+  "workItemIds": [
+    "JIRA-101",
+    "JIRA-102"
+  ]
+}'
 ```
 
 ### ApprovePromotion
 
 ```bash
-curl -X POST http://localhost:5299/promotions/{PROMOTION_ID}/approve ^
-  -H "Content-Type: application/json" ^
-  -d "{ \"userRole\": \"Approver\", \"userName\": \"bob\" }"
+curl --location --request POST 'http://localhost:5000/promotions/63f99f79-a4d4-4a77-8e67-a30763f5f309/approve' \
+--header 'X-User-Name: pepe' \
+--header 'X-Role: Approver'
 ```
 
 ### StartDeployment
 
 ```bash
-curl -X POST http://localhost:5299/promotions/{PROMOTION_ID}/start-deployment ^
-  -H "Content-Type: application/json" ^
-  -d "{ \"userName\": \"deploy-bot\" }"
+curl --location --request POST 'http://localhost:5000/promotions/63f99f79-a4d4-4a77-8e67-a30763f5f309/start' \
+--header 'X-User-Name: pepe' \
+--header 'X-Role: Approver'
 ```
 
 ### CompletePromotion
 
 ```bash
-curl -X POST http://localhost:5299/promotions/{PROMOTION_ID}/complete ^
-  -H "Content-Type: application/json" ^
-  -d "{ \"userName\": \"deploy-bot\" }"
+curl --location --request POST 'http://localhost:5000/promotions/63f99f79-a4d4-4a77-8e67-a30763f5f309/complete' \
+--header 'X-User-Name: pepe' \
+--header 'X-Role: Approver'
 ```
 
 ### RollbackPromotion
 
 ```bash
-curl -X POST http://localhost:5299/promotions/{PROMOTION_ID}/rollback ^
-  -H "Content-Type: application/json" ^
-  -d "{ \"reason\": \"Health checks failing\", \"userName\": \"oncall\" }"
+curl --location 'http://localhost:5000/promotions/63f99f79-a4d4-4a77-8e67-a30763f5f309/rollback' \
+--header 'X-User-Name: pepe' \
+--header 'X-Role: Approver' \
+--header 'Content-Type: application/json' \
+--data '{
+    "reason": "test"
+}'
 ```
 
 ### CancelPromotion
 
 ```bash
-curl -X POST http://localhost:5299/promotions/{PROMOTION_ID}/cancel ^
-  -H "Content-Type: application/json" ^
-  -d "{ \"userName\": \"alice\" }"
+curl --location --request POST 'http://localhost:5000/promotions/63f99f79-a4d4-4a77-8e67-a30763f5f309/cancel' \
+--header 'X-User-Name: pepe' \
+--header 'X-Role: Approver'
 ```
 
-### Queries
+### GetPromotionById
 
 ```bash
-curl http://localhost:5299/promotions/{PROMOTION_ID}
-curl http://localhost:5299/applications/payments/environments/status
-curl "http://localhost:5299/applications/payments/promotions?page=1&pageSize=10"
+curl --location 'http://localhost:5000/promotions/63f99f79-a4d4-4a77-8e67-a30763f5f309' \
+--header 'X-User-Name: pepe' \
+--header 'X-Role: Approver'
 ```
 
-## What I would do next
+### GetEnvironmentStatus
 
-- Add aggregate unit tests (state machine + invariants) and contract tests for API error mapping.
-- Expand the read model to include work item details via `IIssueTrackerPort` (still stubbed).
-- Implement a real Kafka publisher (schema/versioning, retries) and make the consumer deployable as a separate worker process.
+```bash
+curl --location 'http://localhost:5000/promotions/ReleasePilot.Api/status' \
+--header 'X-User-Name: pepe' \
+--header 'X-Role: Approver'
+```
+
+### ListPromotionsByApplication
+
+```bash
+curl --location 'http://localhost:5000/promotions/ReleasePilot.Api/list/1/5' \
+--header 'X-User-Name: pepe' \
+--header 'X-Role: Approver'
+```
 
 ### Swagger
 http://localhost:5000/openapi/v1.json
