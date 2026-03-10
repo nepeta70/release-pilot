@@ -142,7 +142,7 @@ public class PromotionWriteRepository(IDbConnection connection) : IPromotionWrit
             p.Version,
             p.TargetEnvironment.ToString(),
             p.Status.ToString(),
-            JsonSerializer.Serialize(p.WorkItemIds),
+            JsonSerializer.Serialize(p.WorkItems),
             JsonSerializer.Serialize(p.Metadata))
         { }
     }

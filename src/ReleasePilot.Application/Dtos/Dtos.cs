@@ -9,6 +9,7 @@ public record PromotionDetailsDto(
     DeploymentEnvironment TargetEnv,
     PromotionStatus Status,
     DateTime CreatedAt,
+    DateTime? LastUpdatedAt,
     IEnumerable<PromotionHistoryDto> History);
 
 public record PromotionHistoryDto(

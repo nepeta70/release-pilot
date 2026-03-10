@@ -38,6 +38,7 @@ public class PromotionReadRepository(IDbConnection connection) : IPromotionReadR
                     Enum.Parse<DeploymentEnvironment>(p.target_env, ignoreCase: true),
                     Enum.Parse<PromotionStatus>(p.current_status, ignoreCase: true),
                     p.created_at,
+                    p.updated_at,
                     []);
 
                 if (l != null && l.to_status != null)

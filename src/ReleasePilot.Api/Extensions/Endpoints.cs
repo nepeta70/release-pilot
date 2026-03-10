@@ -26,7 +26,7 @@ public static class PromotionEndpoints
             return Results.Accepted();
         });
 
-        group.MapPost("/{id:guid}/start-deployment", async (Guid id, ISender sender, CancellationToken ct, HttpContext context) =>
+        group.MapPost("/{id:guid}/start", async (Guid id, ISender sender, CancellationToken ct, HttpContext context) =>
         {
             await sender.Send(new StartDeploymentCommand(id), ct);
             return Results.Accepted();

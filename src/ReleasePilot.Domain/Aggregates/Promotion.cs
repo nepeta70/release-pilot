@@ -11,7 +11,7 @@ public class Promotion
     public string ApplicationName { get;  }
     public string Version { get; }
     public DeploymentEnvironment TargetEnvironment { get; }
-    public IReadOnlyList<string> WorkItemIds { get; }
+    public IReadOnlyList<string> WorkItems { get; }
     public DateTime CreatedAt { get; }
     public PromotionStatus Status { get; private set; }
     public DateTime? UpdatedAt { get; private set; }
@@ -25,7 +25,7 @@ public class Promotion
         string appName,
         string version,
         DeploymentEnvironment targetEnv,
-        IReadOnlyList<string> workItemIds,
+        IReadOnlyList<string> workItems,
         PromotionStatus status,
         Dictionary<string, string> metadata,
         DateTime createdAt)
@@ -34,7 +34,7 @@ public class Promotion
         ApplicationName = appName;
         Version = version;
         TargetEnvironment = targetEnv;
-        WorkItemIds = workItemIds;
+        WorkItems = workItems;
         Status = status;
         Metadata = metadata;
         CreatedAt = createdAt;
